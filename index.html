@@ -1,58 +1,111 @@
 <!doctype html>
 <html>
 <head>
-    <title>:p</title>
+    <title>64-bit Browser Emulator</title>
     <style>
-        body { background: #222; color: #fff; font-family: sans-serif; text-align: center; }
-        #screen_container { margin: 20px auto; background: #000; display: inline-block; }
-        canvas { display: block; }
-        .controls { padding: 20px; border: 1px dashed #555; display: inline-block; }
+        body { background: #1a1a1a; color: #00ff00; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 20px; }
+        #screen_container { 
+            margin: 20px auto; 
+            background: #000; 
+            border: 5px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            display: inline-block; 
+        }
+        canvas { display: block; image-rendering: pixelated; font-smooth: never; }
+        .controls { 
+            background: #222;
+            padding: 20px; 
+            border: 1px solid #444; 
+            display: inline-block; 
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        input, button { 
+            background: #333; color: #fff; border: 1px solid #555; 
+            padding: 8px; border-radius: 4px; cursor: pointer;
+        }
+        button:hover { background: #444; border-color: #00ff00; }
+        #status { color: #aaa; font-size: 0.9em; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>Run 64-bit operating systems in the browser!!!!!!!</h1>
+    <h1>64-bit OS Web Runner</h1>
     
     <div class="controls">
-        <label for="iso-file">Select ISO:</label>
-        <input type="file" id="iso-file" accept=".iso">
-        <br><br>
-        <label>RAM (MB):</label>
-        <input type="number" id="ram-size" value="1024" step="256">
-        <button id="start-btn">Boot OS</button>
+        <div style="margin-bottom: 15px;">
+            <label for="iso-file">Select ISO (x86_64 or x86):</label>
+            <input type="file" id="iso-file" accept=".iso">
+        </div>
+        <div>
+            <label>RAM (MB):</label>
+            <input type="number" id="ram-size" value="2048" min="256" max="4096">
+            <button id="start-btn">BOOT ISO</button>
+        </div>
+        <div id="status">Ready. Select a file to begin.</div>
     </div>
 
+    <br>
+
     <div id="screen_container">
-        <div style="white-space: pre; font-family: Courier, monospace;"></div>
+        <!-- v86 will use this div for text-mode and the canvas for graphics-mode -->
+        <div style="white-space: pre; font-family: Courier, monospace; font-size: 14px; line-height: 14px;"></div>
         <canvas></canvas>
     </div>
 
+    <!-- Make sure libv86.js is in the same folder -->
     <script src="libv86.js"></script>
     <script>
-        document.getElementById("start-btn").onclick = function() {
+        const startBtn = document.getElementById("start-btn");
+        const status = document.getElementById("status");
+
+        startBtn.onclick = function() {
             const fileInput = document.getElementById("iso-file");
-            const ramSize = document.getElementById("ram-size").value;
+            const ramSize = parseInt(document.getElementById("ram-size").value);
 
             if (fileInput.files.length === 0) {
-                alert("Please select an ISO file first!");
+                alert("Please select an ISO file!");
                 return;
             }
 
             const file = fileInput.files[0];
-            // Create a local blob URL for the ISO
             const isoURL = URL.createObjectURL(file);
+            
+            status.innerText = "Loading WASM & Initializing 64-bit engine...";
+            startBtn.disabled = true;
 
+            // Initialize the emulator
             const emulator = new V86Starter({
-                wasm_path: "v86.wasm",
+                // CRITICAL: Point this to the 64-bit build of the WASM file
+                wasm_path: "v86_64.wasm", 
+                
                 memory_size: ramSize * 1024 * 1024,
                 vga_canvas: document.querySelector("#screen_container canvas"),
-                bios: { url: "/bios/seabios.bin" }, 
-                vga_bios: { url: "/bios/vgabios.bin" },
+                screen_container: document.querySelector("#screen_container"),
+                
+                // standard bios paths
+                bios: { url: "bios/seabios.bin" }, 
+                vga_bios: { url: "bios/vgabios.bin" },
+                
                 cdrom: { url: isoURL },
                 autostart: true,
+                
+                // Enable performance tweaks
+                bzimage_initrd_from_filesystem: true,
+                preserve_mac_from_state_image: true
             });
 
-            console.log("Starting emulator", file.name);
+            emulator.add_listener("emulator-ready", function() {
+                status.innerText = "Running: " + file.name;
+                console.log("64-bit Emulator Ready");
+            });
+
+            // Handle potential crashes/errors
+            window.onerror = function(msg) {
+                if(msg.indexOf("out of memory") > -1) {
+                    status.innerText = "CRASH: Browser ran out of memory. Try a smaller ISO or less RAM.";
+                }
+            };
         };
     </script>
 </body>
