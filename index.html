@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+    <title>:p</title>
+    <style>
+        body { background: #222; color: #fff; font-family: sans-serif; text-align: center; }
+        #screen_container { margin: 20px auto; background: #000; display: inline-block; }
+        canvas { display: block; }
+        .controls { padding: 20px; border: 1px dashed #555; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <h1>Run 64-bit operating systems in the browser!!!!!!!</h1>
+    
+    <div class="controls">
+        <label for="iso-file">Select ISO:</label>
+        <input type="file" id="iso-file" accept=".iso">
+        <br><br>
+        <label>RAM (MB):</label>
+        <input type="number" id="ram-size" value="1024" step="256">
+        <button id="start-btn">Boot OS</button>
+    </div>
+
+    <div id="screen_container">
+        <div style="white-space: pre; font-family: Courier, monospace;"></div>
+        <canvas></canvas>
+    </div>
+
+    <script src="libv86.js"></script>
+    <script>
+        document.getElementById("start-btn").onclick = function() {
+            const fileInput = document.getElementById("iso-file");
+            const ramSize = document.getElementById("ram-size").value;
+
+            if (fileInput.files.length === 0) {
+                alert("Please select an ISO file first!");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            // Create a local blob URL for the ISO
+            const isoURL = URL.createObjectURL(file);
+
+            const emulator = new V86Starter({
+                wasm_path: "v86.wasm",
+                memory_size: ramSize * 1024 * 1024,
+                vga_canvas: document.querySelector("#screen_container canvas"),
+                bios: { url: "/bios/seabios.bin" }, 
+                vga_bios: { url: "/bios/vgabios.bin" },
+                cdrom: { url: isoURL },
+                autostart: true,
+            });
+
+            console.log("Starting emulator", file.name);
+        };
+    </script>
+</body>
+</html>
