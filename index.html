@@ -30,7 +30,7 @@
 </head>
 <body>
 
-    <h1>64-bit OS Web Runner</h1>
+    <h1>64-bit ISO Emulator in the Web!</h1>
     
     <div class="controls">
         <div style="margin-bottom: 15px;">
@@ -77,7 +77,7 @@
             // Initialize the emulator
             const emulator = new V86Starter({
                 // CRITICAL: Point this to the 64-bit build of the WASM file
-                wasm_path: "v86_64.wasm", 
+                wasm_path: "/webassembly/v86_64.wasm", 
                 
                 memory_size: ramSize * 1024 * 1024,
                 vga_canvas: document.querySelector("#screen_container canvas"),
