@@ -81,25 +81,17 @@
         const startBtn = document.getElementById("start-btn");
         const status = document.getElementById("status");
 
-        // Custom function to log to our top-right console
         function customLog(message) {
             const entry = document.createElement("div");
             entry.innerText = `[${new Date().toLocaleTimeString()}] ${message}`;
             logBox.appendChild(entry);
             logBox.scrollTop = logBox.scrollHeight;
-            console.log(message); // Still logs to actual dev tools
+            console.log(message);
         }
 
-        // Fullscreen Logic
         document.getElementById("fullscreen-btn").onclick = function() {
             const elem = document.getElementById("screen_container");
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) { /* Safari */
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) { /* IE11 */
-                elem.msRequestFullscreen();
-            }
+            if (elem.requestFullscreen) elem.requestFullscreen();
             customLog("Entering Fullscreen Mode");
         };
 
@@ -115,11 +107,11 @@
             const file = fileInput.files[0];
             const isoURL = URL.createObjectURL(file);
             
-            status.innerText = "Initializing 64-bit engine...";
+            status.innerText = "Attempting to launch engine...";
             customLog(`Loading ISO: ${file.name}`);
             startBtn.disabled = true;
 
-            const emulator = new V86Starter({
+            const config = {
                 wasm_path: "webassembly/v86_64.wasm", 
                 memory_size: ramSize * 1024 * 1024,
                 vga_canvas: document.querySelector("#screen_container canvas"),
@@ -128,18 +120,28 @@
                 vga_bios: { url: "bios/vgabios.bin" },
                 cdrom: { url: isoURL },
                 autostart: true,
-            });
-
-            emulator.add_listener("emulator-ready", function() {
-                status.innerText = "Running: " + file.name;
-                customLog("v86 Emulator Ready & Booting...");
-            });
-
-            // Log instruction errors or memory warnings
-            window.onerror = function(msg) {
-                customLog(`ERROR: ${msg}`);
             };
+
+            try {
+                // Auto-detect constructor name (some use V86, some use V86Starter)
+                const Emulator = window.V86Starter || window.V86;
+                if (!Emulator) {
+                    throw new Error("v86 Library not loaded. Check lib/libv86.js path.");
+                }
+
+                const emulator = new Emulator(config);
+
+                emulator.add_listener("emulator-ready", function() {
+                    status.innerText = "Running: " + file.name;
+                    customLog("v86 Engine Ready. Booting...");
+                });
+            } catch (e) {
+                customLog(`CRITICAL ERROR: ${e.message}`);
+                status.innerText = "Failed to launch.";
+                startBtn.disabled = false;
+            }
         };
     </script>
+
 </body>
 </html>
